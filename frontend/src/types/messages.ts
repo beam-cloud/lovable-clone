@@ -21,16 +21,19 @@ export interface Message {
   data: Record<string, any>;
   id?: string;
   timestamp?: number;
+  session_id?: string;
 }
 
 export const createMessage = (
   type: MessageType,
   data: Record<string, any> = {},
   id?: string,
-  timestamp?: number
+  timestamp?: number,
+  session_id?: string
 ): Message => ({
   type,
   data,
   id,
   timestamp: timestamp || Date.now(),
+  session_id,
 });

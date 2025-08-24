@@ -30,14 +30,22 @@ class Message:
     timestamp: int
     type: MessageType
     data: dict
+    session_id: str
 
     @classmethod
-    def new(cls, type: MessageType, data: dict, id: str | None = None) -> "Message":
+    def new(
+        cls,
+        type: MessageType,
+        data: dict,
+        id: str | None = None,
+        session_id: str | None = None,
+    ) -> "Message":
         return cls(
             type=type,
             data=data,
             id=id or str(uuid.uuid4()),
             timestamp=time.time_ns() // 1_000_000,
+            session_id=session_id or str(uuid.uuid4()),
         )
 
     def to_dict(self) -> dict:
@@ -46,25 +54,29 @@ class Message:
             "type": self.type.value,
             "data": self.data,
             "timestamp": self.timestamp,
+            "session_id": self.session_id,
         }
 
 
 class Agent:
     def __init__(self):
         self.model_client: BamlSyncClient = b
-        self.init_data: dict = {}
+        self.session_data: dict = {}  # map of session -> session_data
         self.history: list[dict] = []
 
-    async def init(self):
-        await self.create_app_environment()
+    async def init(self, session_id: str):
+        await self.create_app_environment(session_id)
 
-    async def create_app_environment(self):
-        self.init_data = create_app_environment()
+    async def create_app_environment(self, session_id: str):
+        if session_id not in self.session_data:
+            self.session_data[session_id] = create_app_environment()
 
-    async def load_code(self, sandbox_id: str):
+    async def load_code(self, *, session_id: str):
+        sandbox_id = self.session_data[session_id]["sandbox_id"]
         return load_code(sandbox_id)
 
-    async def edit_code(self, sandbox_id: str, code_map: dict):
+    async def edit_code(self, *, session_id: str, code_map: dict):
+        sandbox_id = self.session_data[session_id]["sandbox_id"]
         return edit_code(sandbox_id, code_map)
 
     async def add_to_history(self, user_feedback: str, agent_plan: str):
@@ -88,10 +100,10 @@ class Agent:
             for msg in self.history
         ]
 
-    async def send_feedback(self, feedback: str):
+    async def send_feedback(self, *, session_id: str, feedback: str):
         yield Message.new(MessageType.UPDATE_IN_PROGRESS, {}).to_dict()
 
-        code_map, package_json = await self.load_code(self.init_data["sandbox_id"])
+        code_map, package_json = await self.load_code(session_id=session_id)
 
         code_files = []
         for path, content in code_map.items():
@@ -113,6 +125,7 @@ class Agent:
                     MessageType.AGENT_PARTIAL,
                     {"text": partial.plan.value},
                     id=plan_msg_id,
+                    session_id=session_id,
                 ).to_dict()
 
             if partial.plan.state == "Complete" and not sent_plan:
@@ -120,6 +133,7 @@ class Agent:
                     MessageType.AGENT_FINAL,
                     {"text": partial.plan.value},
                     id=plan_msg_id,
+                    session_id=session_id,
                 ).to_dict()
 
                 await self.add_to_history(feedback, partial.plan.value)
@@ -132,13 +146,16 @@ class Agent:
                         MessageType.UPDATE_FILE,
                         {"text": f"Working on {file.path}"},
                         id=file_msg_id,
+                        session_id=session_id,
                     ).to_dict()
 
                     new_code_map[file.path] = file.content
 
-        await self.edit_code(self.init_data["sandbox_id"], new_code_map)
+        await self.edit_code(session_id=session_id, code_map=new_code_map)
 
-        yield Message.new(MessageType.UPDATE_COMPLETED, {}).to_dict()
+        yield Message.new(
+            MessageType.UPDATE_COMPLETED, {}, session_id=session_id
+        ).to_dict()
 
 
 async def _load_agent():
@@ -164,12 +181,28 @@ async def handler(event, context):
 
     match msg.get("type"):
         case MessageType.USER.value:
-            return agent.send_feedback(msg["data"]["text"])
+            session_id = msg["data"]["session_id"]
+
+            return agent.send_feedback(
+                session_id=session_id,
+                feedback=msg["data"]["text"],
+            )
         case MessageType.INIT.value:
-            await agent.init()
-            return Message.new(MessageType.INIT, agent.init_data).to_dict()
+            session_id = msg["data"]["session_id"]
+            await agent.init(session_id=session_id)
+
+            return Message.new(
+                MessageType.INIT,
+                session_id=session_id,
+                data=agent.session_data[session_id],
+            ).to_dict()
         case MessageType.LOAD_CODE.value:
-            code_map = await agent.load_code(msg["data"]["sandbox_id"])
+            session_id = msg["data"]["session_id"]
+
+            code_map = await agent.load_code(
+                session_id=session_id,
+            )
+
             return Message.new(MessageType.LOAD_CODE, code_map).to_dict()
         case _:
             return {}

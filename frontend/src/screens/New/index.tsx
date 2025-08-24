@@ -5,13 +5,25 @@ import { Textarea } from "@/components/ui/textarea";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 
+// Generate UUID v4
+const generateUUID = (): string => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 const NewScreen: React.FC = () => {
   const [input, setInput] = useState("");
   const navigate = useNavigate();
 
   const handleStartBuilding = () => {
     if (input.trim()) {
-      navigate("/create", { state: { initialPrompt: input } });
+      const sessionId = generateUUID();
+      navigate(`/create?session_id=${sessionId}`, {
+        state: { initialPrompt: input, session_id: sessionId },
+      });
     }
   };
 

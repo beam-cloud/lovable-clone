@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Message } from "../../types/messages";
 import styled from "styled-components";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useMessageBus } from "../../hooks/useMessageBus";
 
 const DEVICE_SPECS = {
@@ -40,10 +40,20 @@ const Create = () => {
   const hasConnectedRef = useRef(false);
   const processedMessageIds = useRef<Set<string>>(new Set());
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const sessionId =
+    searchParams.get("session_id") || location.state?.session_id;
   const initialPromptSent = useRef(false);
   const [selectedDevice, setSelectedDevice] = useState<
     "mobile" | "tablet" | "desktop"
   >("desktop");
+
+  // Debug log for session_id
+  useEffect(() => {
+    if (sessionId) {
+      console.log("Session ID initialized:", sessionId);
+    }
+  }, [sessionId]);
 
   const refreshIframe = useCallback(() => {
     if (iframeRef.current && iframeUrl && iframeUrl !== "/") {
@@ -363,6 +373,7 @@ const Create = () => {
   const { isConnected, error, connect, send } = useMessageBus({
     wsUrl: BEAM_CONFIG.WS_URL,
     token: BEAM_CONFIG.TOKEN,
+    sessionId: sessionId,
     handlers: messageHandlers,
     onConnect: () => {
       console.log("Connected to Beam Cloud");
@@ -431,6 +442,7 @@ const Create = () => {
             text: inputValue,
             sender: Sender.USER,
           },
+          session_id: sessionId,
         },
       ]);
     }
@@ -453,14 +465,14 @@ const Create = () => {
     setIframeError(true);
   };
 
-  // Simple auto-connect
+  // Auto-connect when sessionId is available
   useEffect(() => {
-    if (!isConnected && !hasConnectedRef.current) {
-      console.log("Connecting to Workspace");
+    if (!isConnected && !hasConnectedRef.current && sessionId) {
+      console.log("Connecting to Workspace with sessionId:", sessionId);
       hasConnectedRef.current = true;
       connect();
     }
-  }, [isConnected, connect]);
+  }, [isConnected, sessionId]); // Removed 'connect' from dependencies to prevent reconnection loops
 
   // Clear processed message IDs when connection is lost
   useEffect(() => {
@@ -491,11 +503,12 @@ const Create = () => {
             text: location.state.initialPrompt,
             sender: Sender.USER,
           },
+          session_id: sessionId,
         },
       ]);
       initialPromptSent.current = true;
     }
-  }, [initCompleted, location.state, send, setMessages]);
+  }, [initCompleted, location.state, send, setMessages, sessionId]);
 
   const LoadingState = () => (
     <IframeErrorContainer>
