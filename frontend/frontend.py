@@ -1,6 +1,6 @@
 import os
 
-from beta9 import Image, PythonVersion, asgi
+from beam import Image, PythonVersion, asgi
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles

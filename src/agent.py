@@ -1,21 +1,15 @@
 import json
-import os
 import time
 import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mcp.types import CallToolResult, Tool
-
 
 from beam import Image, PythonVersion, realtime
 
 from baml_client.sync_client import BamlSyncClient, b
 from baml_client.types import Message as ConvoMessage
 
-from .client import mcp_session
+from .tools import create_app_environment, edit_code, load_code
 
 
 class MessageType(Enum):
@@ -55,54 +49,23 @@ class Message:
         }
 
 
-class ToolType(Enum):
-    CREATE_APP_ENVIRONMENT = "create_app_environment"
-    LOAD_CODE = "load_code"
-    EDIT_CODE = "edit_code"
-
-
 class Agent:
-    def __init__(self, *, mcp_url: str):
+    def __init__(self):
         self.model_client: BamlSyncClient = b
-        self.mcp_url: str = mcp_url
-        self.tools: list[Tool] = []
         self.init_data: dict = {}
         self.history: list[dict] = []
 
     async def init(self):
-        await self.load_tools()
         await self.create_app_environment()
 
-    async def load_tools(self):
-        async with mcp_session(self.mcp_url) as session:
-            self.tools = await session.list_tools()
-
     async def create_app_environment(self):
-        async with mcp_session(self.mcp_url) as session:
-            response: CallToolResult = await session.call_tool(
-                name=ToolType.CREATE_APP_ENVIRONMENT.value,
-                arguments={},
-            )
-            self.init_data = json.loads(response.content[0].text)
+        self.init_data = create_app_environment()
 
     async def load_code(self, sandbox_id: str):
-        async with mcp_session(self.mcp_url) as session:
-            response: CallToolResult = await session.call_tool(
-                name=ToolType.LOAD_CODE.value,
-                arguments={"sandbox_id": sandbox_id},
-            )
-            return json.loads(response.content[0].text)
+        return load_code(sandbox_id)
 
     async def edit_code(self, sandbox_id: str, code_map: dict):
-        async with mcp_session(self.mcp_url) as session:
-            response: CallToolResult = await session.call_tool(
-                name=ToolType.EDIT_CODE.value,
-                arguments={
-                    "sandbox_id": sandbox_id,
-                    "code_map": code_map,
-                },
-            )
-            return json.loads(response.content[0].text)
+        return edit_code(sandbox_id, code_map)
 
     async def add_to_history(self, user_feedback: str, agent_plan: str):
         self.history.append(
@@ -132,7 +95,7 @@ class Agent:
 
         code_files = []
         for path, content in code_map.items():
-            code_files.append({"path": path, "content": content})
+            code_files.append({"path": path, "content": str(content)})
 
         history = self.get_history()
         stream = self.model_client.stream.EditCode(
@@ -179,7 +142,7 @@ class Agent:
 
 
 async def _load_agent():
-    agent = Agent(mcp_url=os.getenv("LOVABLE_MCP_URL"))
+    agent = Agent()
     print("Loaded agent")
     return agent
 
@@ -191,7 +154,7 @@ async def _load_agent():
     image=Image(
         python_packages="requirements.txt", python_version=PythonVersion.Python312
     ),
-    secrets=["OPENAI_API_KEY", "LOVABLE_MCP_URL"],
+    secrets=["OPENAI_API_KEY"],
     concurrent_requests=1000,
     keep_warm_seconds=300,
 )

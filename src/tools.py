@@ -2,10 +2,7 @@ import tempfile
 from pathlib import Path
 
 from beam import Image, Sandbox
-from beam.integrations import MCPServer
-from fastmcp import FastMCP
 
-mcp = FastMCP(name="lovable-clone-mcp")
 image = (
     Image()
     .from_registry("node:20")
@@ -23,7 +20,6 @@ DEFAULT_CODE_PATH = "/app/src"
 DEFAULT_PROJECT_ROOT = "/app"
 
 
-@mcp.tool
 def create_app_environment() -> dict:
     print("Creating app environment...")
 
@@ -50,7 +46,6 @@ def create_app_environment() -> dict:
     }
 
 
-@mcp.tool
 def load_code(sandbox_id: str) -> tuple[dict, str]:
     print(f"Loading code for sandbox {sandbox_id}")
 
@@ -85,7 +80,6 @@ def load_code(sandbox_id: str) -> tuple[dict, str]:
     return file_map, package_json
 
 
-@mcp.tool
 def edit_code(sandbox_id: str, code_map: dict) -> dict:
     print(f"Editing code for sandbox {sandbox_id}")
 
@@ -109,6 +103,3 @@ def edit_code(sandbox_id: str, code_map: dict) -> dict:
             sandbox.fs.upload_file(temp_file.name, sandbox_path)
 
     return {"sandbox_id": sandbox.sandbox_id()}
-
-
-s = MCPServer(mcp, cpu=1, memory=1024, keep_warm_seconds=600, concurrent_requests=1000)
