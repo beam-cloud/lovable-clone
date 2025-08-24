@@ -86,10 +86,10 @@ Prompts are defined in `baml_src/build.baml`:
 - **CodeChanges Schema** - Defines the structure of AI responses
 - **Test Cases** - Validate prompt behavior
 
-### Sandbox/MCP server config
+### Sandbox environment
 
-The sandbox environment is configured in `src/tools.py`:
+The sandbox environment is managed in `src/tools.py`:
 
 - Node.js 20 base image
 - React + Vite + shadcn/ui template
-- Additional packages: React Router, Recharts, TanStack Query, etc.
+- Other deps: React Router, Recharts, TanStack Query, etc.
