@@ -8,7 +8,12 @@ interface NavbarItemProps {
   isActive?: boolean;
 }
 
-const NavbarItem: React.FC<NavbarItemProps> = ({ label, href, onClick, isActive }) => {
+const NavbarItem: React.FC<NavbarItemProps> = ({
+  label,
+  href,
+  onClick,
+  isActive,
+}) => {
   const handleOnClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     console.log("clicked");
@@ -18,7 +23,11 @@ const NavbarItem: React.FC<NavbarItemProps> = ({ label, href, onClick, isActive 
   };
 
   return (
-    <StyledLink href={href || ""} $isActive={isActive} onClick={onClick && handleOnClick}>
+    <StyledLink
+      href={href || ""}
+      $isActive={isActive}
+      onClick={onClick && handleOnClick}
+    >
       {label}
     </StyledLink>
   );
@@ -27,11 +36,12 @@ const NavbarItem: React.FC<NavbarItemProps> = ({ label, href, onClick, isActive 
 export default NavbarItem;
 
 const StyledLink = styled(NavLink)<{ $isActive?: boolean }>`
-  ${(props) => props.theme.styleSet.textSmPlus}
+  font-size: 14px;
+  font-weight: 500;
   &:hover {
     text-decoration: none;
   }
-  color: ${(props) => (props.$isActive ? props.theme.colors.gray12 : props.theme.colors.gray11)};
+  color: ${(props) => (props.$isActive ? "#1f2937" : "#6b7280")};
   text-decoration: none;
   cursor: pointer;
 
@@ -43,7 +53,7 @@ const StyledLink = styled(NavLink)<{ $isActive?: boolean }>`
     margin: 0 auto;
     opacity: ${(props) => (props.$isActive ? 1 : 0)};
     margin-top: 12px;
-    background-color: ${(props) => props.theme.colors.gray11};
+    background-color: #6b7280;
     border-radius: 2px;
   }
-`; 
+`;

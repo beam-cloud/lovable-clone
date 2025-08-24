@@ -12,21 +12,45 @@ interface NavLinkProps {
 }
 
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
-  ({ href, reload, className, children, newWindow = false, onClick, active = false }, ref) => {
+  (
+    {
+      href,
+      reload,
+      className,
+      children,
+      newWindow = false,
+      onClick,
+      active = false,
+    },
+    ref
+  ) => {
     const extraProps = {
       ...(newWindow && { target: "_blank" }),
     };
 
     if (onClick || reload || href.startsWith("http")) {
       return (
-        <StyledOutLink ref={ref} href={href} className={className} {...extraProps} onClick={onClick} $active={active}>
+        <StyledOutLink
+          ref={ref}
+          href={href}
+          className={className}
+          {...extraProps}
+          onClick={onClick}
+          $active={active}
+        >
           {children}
         </StyledOutLink>
       );
     }
 
     return (
-      <StyledOutLink ref={ref} href={href} className={className} {...extraProps} $active={active}>
+      <StyledOutLink
+        ref={ref}
+        href={href}
+        className={className}
+        {...extraProps}
+        $active={active}
+      >
         {children}
       </StyledOutLink>
     );
@@ -37,10 +61,10 @@ NavLink.displayName = "NavLink";
 
 const StyledOutLink = styled.a<{ $active?: boolean }>`
   text-decoration: none;
-  color: ${({ theme, $active }) => $active ? theme.colors.gray12 : theme.colors.gray11};
+  color: ${({ $active }) => ($active ? "#1f2937" : "#6b7280")};
   &:hover {
-    color: ${({ theme }) => theme.colors.gray12};
+    color: #1f2937;
   }
 `;
 
-export default NavLink; 
+export default NavLink;
