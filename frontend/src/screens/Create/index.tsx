@@ -35,6 +35,7 @@ const Create = () => {
   const [iframeReady, setIframeReady] = useState(false);
   const [isUpdateInProgress, setIsUpdateInProgress] = useState(false);
   const [initCompleted, setInitCompleted] = useState(false);
+  const [sandboxExists, setSandboxExists] = useState(false);
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const hasConnectedRef = useRef(false);
@@ -101,6 +102,12 @@ const Create = () => {
       if (typeof message.data.url === "string" && message.data.sandbox_id) {
         setIframeUrl(message.data.url);
         setIframeError(false);
+      }
+
+      // Check if sandbox already exists
+      if (message.data.exists === true) {
+        setSandboxExists(true);
+        console.log("Sandbox already exists, skipping initial prompt");
       }
 
       setMessages((prev) => {
@@ -488,6 +495,7 @@ const Create = () => {
   useEffect(() => {
     if (
       initCompleted &&
+      !sandboxExists &&
       location.state &&
       location.state.initialPrompt &&
       !initialPromptSent.current
@@ -508,7 +516,14 @@ const Create = () => {
       ]);
       initialPromptSent.current = true;
     }
-  }, [initCompleted, location.state, send, setMessages, sessionId]);
+  }, [
+    initCompleted,
+    sandboxExists,
+    location.state,
+    send,
+    setMessages,
+    sessionId,
+  ]);
 
   const LoadingState = () => (
     <IframeErrorContainer>

@@ -64,12 +64,16 @@ class Agent:
         self.session_data: dict = {}  # map of session -> session_data
         self.history: list[dict] = []
 
-    async def init(self, session_id: str):
-        await self.create_app_environment(session_id)
+    async def init(self, session_id: str) -> bool:
+        exists = await self.create_app_environment(session_id)
+        return exists
 
     async def create_app_environment(self, session_id: str):
         if session_id not in self.session_data:
             self.session_data[session_id] = create_app_environment()
+            return False
+
+        return True
 
     async def load_code(self, *, session_id: str):
         sandbox_id = self.session_data[session_id]["sandbox_id"]
@@ -189,13 +193,17 @@ async def handler(event, context):
             )
         case MessageType.INIT.value:
             session_id = msg["data"]["session_id"]
-            await agent.init(session_id=session_id)
+            exists = await agent.init(session_id=session_id)
+
+            data = agent.session_data[session_id]
+            data["exists"] = exists
 
             return Message.new(
                 MessageType.INIT,
                 session_id=session_id,
-                data=agent.session_data[session_id],
+                data=data,
             ).to_dict()
+
         case MessageType.LOAD_CODE.value:
             session_id = msg["data"]["session_id"]
 
